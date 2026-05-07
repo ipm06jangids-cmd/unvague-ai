@@ -31,7 +31,7 @@ export function HowItWorks() {
 
   return (
     <section id="how" ref={ref} className="relative isolate overflow-hidden px-6 py-24 md:py-32">
-      <AmbientVideo src="/loop-itachi.mp4" opacity={0.22} blend="screen" />
+      <AmbientVideo src="/loop-itachi.mp4" opacity={0.5} />
       <div className="mx-auto max-w-5xl">
         <div className="mb-12 flex flex-col items-center gap-4 text-center">
           <SectionLabel>The method</SectionLabel>

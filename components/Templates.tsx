@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Search } from "lucide-react";
 import { Glass, SectionLabel } from "./ui";
+import { AmbientVideo } from "./AmbientVideo";
 
 type Cat =
   | "Recommended"
@@ -182,7 +183,8 @@ export function Templates({
   }, [active, q]);
 
   return (
-    <section className="relative px-6 py-20 md:py-28">
+    <section className="relative isolate overflow-hidden px-6 py-20 md:py-28">
+      <AmbientVideo src="/loop-2b.mp4" opacity={0.45} />
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>

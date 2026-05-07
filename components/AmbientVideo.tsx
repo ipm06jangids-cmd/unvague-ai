@@ -4,12 +4,10 @@ import { useEffect, useRef, useState } from "react";
 
 export function AmbientVideo({
   src,
-  opacity = 0.18,
-  blend = "normal",
+  opacity = 0.55,
 }: {
   src: string;
   opacity?: number;
-  blend?: "normal" | "screen" | "overlay" | "luminosity";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [load, setLoad] = useState(false);
@@ -29,14 +27,18 @@ export function AmbientVideo({
           }
         }
       },
-      { rootMargin: "200px" },
+      { rootMargin: "300px" },
     );
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
   return (
-    <div ref={ref} aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+    <div
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+    >
       {load && (
         <video
           autoPlay
@@ -45,12 +47,14 @@ export function AmbientVideo({
           playsInline
           preload="metadata"
           className="absolute inset-0 h-full w-full object-cover"
-          style={{ opacity, mixBlendMode: blend }}
+          style={{ opacity }}
         >
           <source src={src} type="video/mp4" />
         </video>
       )}
-      <div className="absolute inset-0 bg-gradient-to-b from-obsidian-950/70 via-obsidian-950/85 to-obsidian-950/95" />
+      <div className="absolute inset-0 bg-gradient-to-b from-obsidian-950/55 via-obsidian-950/40 to-obsidian-950" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,transparent_0%,rgba(7,6,10,0.5)_70%,rgba(7,6,10,0.85)_100%)]" />
+      <div className="grain absolute inset-0" />
     </div>
   );
 }

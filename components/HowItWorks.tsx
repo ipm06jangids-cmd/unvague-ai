@@ -5,6 +5,7 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { Eye, Wand2, Crown } from "lucide-react";
 import { Hairline, SectionLabel } from "./ui";
+import { AmbientVideo } from "./AmbientVideo";
 
 const STEPS = [
   {
@@ -29,7 +30,8 @@ export function HowItWorks() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="how" ref={ref} className="relative px-6 py-24 md:py-32">
+    <section id="how" ref={ref} className="relative isolate overflow-hidden px-6 py-24 md:py-32">
+      <AmbientVideo src="/loop-itachi.mp4" opacity={0.22} blend="screen" />
       <div className="mx-auto max-w-5xl">
         <div className="mb-12 flex flex-col items-center gap-4 text-center">
           <SectionLabel>The method</SectionLabel>

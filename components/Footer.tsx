@@ -2,13 +2,15 @@
 
 import { ArrowUp, Sparkles } from "lucide-react";
 import { Button, Hairline, SectionLabel } from "./ui";
+import { AmbientVideo } from "./AmbientVideo";
 
 const SHARE_TEXT =
   "Found this — turns lazy AI prompts into world-class ones. Free, no signup. unvague.ai";
 
 export function Footer() {
   return (
-    <footer className="relative px-6 py-20">
+    <footer className="relative isolate overflow-hidden px-6 py-20">
+      <AmbientVideo src="/loop-luffy.mp4" opacity={0.2} blend="screen" />
       <div className="mx-auto max-w-4xl">
         <Hairline className="mb-16" />
 

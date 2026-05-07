@@ -4,6 +4,7 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import { Glass, Hairline, SectionLabel } from "./ui";
+import { AmbientVideo } from "./AmbientVideo";
 
 const PAIRS = [
   {
@@ -60,7 +61,8 @@ export function ExamplesShowcase() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
   return (
-    <section ref={ref} className="relative px-6 py-24 md:py-32">
+    <section ref={ref} className="relative isolate overflow-hidden px-6 py-24 md:py-32">
+      <AmbientVideo src="/loop-goku.mp4" opacity={0.18} blend="screen" />
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 flex flex-col items-center gap-4 text-center">
           <SectionLabel>Receipts</SectionLabel>

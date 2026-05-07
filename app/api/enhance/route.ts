@@ -9,6 +9,7 @@ import {
 import { rateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function getClientIp(req: NextRequest): string {
   const fwd = req.headers.get("x-forwarded-for");
@@ -16,6 +17,16 @@ function getClientIp(req: NextRequest): string {
   const real = req.headers.get("x-real-ip");
   if (real) return real;
   return "anon";
+}
+
+function repairJson(text: string): string {
+  let t = text.trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fence) t = fence[1];
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return t;
+  return t.slice(start, end + 1);
 }
 
 export async function POST(req: NextRequest) {
@@ -28,15 +39,11 @@ export async function POST(req: NextRequest) {
 
     const ip = getClientIp(req);
     const limit = await rateLimit(`enhance:${ip}`, 10);
-    if (!limit.success) {
+    if (!limit.success)
       return NextResponse.json(
-        {
-          error: "rate limit reached. sign in for higher limits, or come back later.",
-          resetAt: limit.reset,
-        },
+        { error: "rate limit reached. come back later.", resetAt: limit.reset },
         { status: 429 },
       );
-    }
 
     const enhanceReq: EnhanceRequest = {
       prompt,
@@ -62,23 +69,30 @@ export async function POST(req: NextRequest) {
         responseMimeType: "application/json",
         responseSchema: ENHANCE_SCHEMA,
         temperature: 0.7,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
+        // disable thinking on gemini-2.5-flash for fast deterministic JSON
+        ...({ thinkingConfig: { thinkingBudget: 0 } } as Record<string, unknown>),
       },
     });
 
     const result = await model.generateContent(user);
     const text = result.response.text();
-    let parsed: EnhanceResponse;
+
+    let parsed: EnhanceResponse | null = null;
     try {
       parsed = JSON.parse(text) as EnhanceResponse;
     } catch {
-      return NextResponse.json(
-        { error: "model returned malformed JSON", raw: text },
-        { status: 502 },
-      );
+      try {
+        parsed = JSON.parse(repairJson(text)) as EnhanceResponse;
+      } catch {
+        return NextResponse.json(
+          { error: "model returned malformed JSON", raw: text.slice(0, 500) },
+          { status: 502 },
+        );
+      }
     }
 
-    if (!parsed.enhanced || !Array.isArray(parsed.changes))
+    if (!parsed?.enhanced || !Array.isArray(parsed.changes))
       return NextResponse.json({ error: "incomplete response" }, { status: 502 });
 
     return NextResponse.json(parsed);

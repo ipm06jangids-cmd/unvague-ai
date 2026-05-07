@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Sparkles,
@@ -13,6 +13,8 @@ import {
   Type,
   Image as ImageIcon,
   Film,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { Button, Chip, Glass, Hairline, SectionLabel } from "./ui";
 import {
@@ -142,6 +144,82 @@ export function EnhanceTool() {
     "enhanced",
   );
   const [showOriginal, setShowOriginal] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [micSupported, setMicSupported] = useState(false);
+  const recRef = useRef<unknown>(null);
+  const resultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    type SR = new () => {
+      continuous: boolean;
+      interimResults: boolean;
+      lang: string;
+      onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+      onend: () => void;
+      onerror: () => void;
+      start: () => void;
+      stop: () => void;
+    };
+    const w = window as unknown as { SpeechRecognition?: SR; webkitSpeechRecognition?: SR };
+    if (w.SpeechRecognition || w.webkitSpeechRecognition) setMicSupported(true);
+  }, []);
+
+  useEffect(() => {
+    function onPrefill(e: Event) {
+      const ce = e as CustomEvent<{ prompt: string; mode?: Mode }>;
+      if (ce.detail?.prompt) setPrompt(ce.detail.prompt);
+      if (ce.detail?.mode) setMode(ce.detail.mode);
+      setResult(null);
+      setBothResult(null);
+    }
+    window.addEventListener("unvague:prefill", onPrefill);
+    return () => window.removeEventListener("unvague:prefill", onPrefill);
+  }, []);
+
+  function toggleMic() {
+    if (recording) {
+      const r = recRef.current as { stop: () => void } | null;
+      r?.stop();
+      setRecording(false);
+      return;
+    }
+    type SR = new () => {
+      continuous: boolean;
+      interimResults: boolean;
+      lang: string;
+      onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+      onend: () => void;
+      onerror: () => void;
+      start: () => void;
+      stop: () => void;
+    };
+    const w = window as unknown as { SpeechRecognition?: SR; webkitSpeechRecognition?: SR };
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+    let final = prompt ? prompt + " " : "";
+    let interim = "";
+    rec.onresult = (e) => {
+      interim = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i] as ArrayLike<{ transcript: string }> & {
+          isFinal?: boolean;
+        };
+        const txt = r[0].transcript;
+        if (r.isFinal) final += txt + " ";
+        else interim += txt;
+      }
+      setPrompt((final + interim).trim());
+    };
+    rec.onend = () => setRecording(false);
+    rec.onerror = () => setRecording(false);
+    rec.start();
+    recRef.current = rec;
+    setRecording(true);
+  }
 
   function currentTarget(): AnyTarget {
     if (mode === "image") return imageTarget;
@@ -178,6 +256,9 @@ export function EnhanceTool() {
       if (!res.ok) throw new Error(data.error || "request failed");
       setResult(data as EnhanceResponse);
       setActiveTab("enhanced");
+      setTimeout(() => {
+        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
       if (runBoth && mode === "text") {
         setRunning(true);
         try {
@@ -256,14 +337,44 @@ export function EnhanceTool() {
         </Glass>
 
         <Glass className="mt-6 p-6 md:p-8">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={`e.g. "${EXAMPLES[mode][0]}"`}
-            rows={4}
-            maxLength={4000}
-            className="w-full resize-none rounded-xl border border-obsidian-700 bg-obsidian-950/50 p-4 font-mono text-sm text-ivory-100 placeholder:text-ivory-500 focus:border-violet-500/60 focus:outline-none focus:ring-1 focus:ring-violet-500/40"
-          />
+          <div className="relative">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={`e.g. "${EXAMPLES[mode][0]}" — or click the mic and just speak`}
+              rows={4}
+              maxLength={4000}
+              className="w-full resize-none rounded-xl border border-obsidian-700 bg-obsidian-950/50 p-4 pr-14 font-mono text-sm text-ivory-100 placeholder:text-ivory-500 focus:border-violet-500/60 focus:outline-none focus:ring-1 focus:ring-violet-500/40"
+            />
+            {micSupported && (
+              <button
+                type="button"
+                onClick={toggleMic}
+                aria-label={recording ? "Stop recording" : "Start voice input"}
+                data-cursor-hover
+                className={`absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border transition-all ${
+                  recording
+                    ? "border-red-400/60 bg-red-500/20 text-red-300 shadow-[0_0_24px_-4px_rgba(248,113,113,0.6)]"
+                    : "border-gold-400/30 bg-obsidian-900/60 text-ivory-300 hover:border-gold-400 hover:text-gold-300"
+                }`}
+              >
+                {recording ? (
+                  <MicOff className="h-4 w-4 animate-pulse" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </button>
+            )}
+            {recording && (
+              <div className="mt-2 inline-flex items-center gap-2 text-[11px] text-red-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400/60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
+                </span>
+                Listening — speak now
+              </div>
+            )}
+          </div>
 
           <div className="mt-5 space-y-4">
             <div>
@@ -420,10 +531,11 @@ export function EnhanceTool() {
         <AnimatePresence>
           {result && (
             <motion.div
+              ref={resultRef}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-10"
+              className="mt-10 scroll-mt-20"
             >
               <Hairline className="my-6" />
 

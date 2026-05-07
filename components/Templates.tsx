@@ -184,7 +184,7 @@ export function Templates({
 
   return (
     <section className="relative isolate overflow-hidden px-6 py-20 md:py-28">
-      <AmbientVideo src="/loop-2b.mp4" opacity={0.45} />
+      <AmbientVideo src="/loop-2b.mp4" peak={0.65} />
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>

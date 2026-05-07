@@ -298,7 +298,7 @@ export function EnhanceTool() {
 
   return (
     <section id="tool" className="relative isolate overflow-hidden px-6 py-24 md:py-32">
-      <AmbientVideo src="/loop-gojo-eyes.mp4" opacity={0.45} />
+      <AmbientVideo src="/loop-gojo-eyes.mp4" peak={0.65} />
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 flex flex-col items-center gap-4">
           <SectionLabel>The forge</SectionLabel>

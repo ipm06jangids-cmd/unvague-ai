@@ -62,7 +62,7 @@ export function ExamplesShowcase() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
   return (
     <section ref={ref} className="relative isolate overflow-hidden px-6 py-24 md:py-32">
-      <AmbientVideo src="/loop-gear5.mp4" opacity={0.5} />
+      <AmbientVideo src="/loop-gear5.mp4" peak={0.7} />
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 flex flex-col items-center gap-4 text-center">
           <SectionLabel>Receipts</SectionLabel>

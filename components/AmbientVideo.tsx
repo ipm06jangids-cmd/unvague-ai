@@ -1,16 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 export function AmbientVideo({
   src,
-  opacity = 0.55,
+  peak = 0.7,
 }: {
   src: string;
-  opacity?: number;
+  peak?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [load, setLoad] = useState(false);
+
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"],
+  });
+  const opacity = useTransform(
+    scrollYProgress,
+    [0, 0.25, 0.5, 0.75, 1],
+    [0, peak, peak, peak, 0],
+  );
 
   useEffect(() => {
     const el = ref.current;
@@ -27,7 +38,7 @@ export function AmbientVideo({
           }
         }
       },
-      { rootMargin: "300px" },
+      { rootMargin: "400px" },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -40,7 +51,7 @@ export function AmbientVideo({
       className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
     >
       {load && (
-        <video
+        <motion.video
           autoPlay
           loop
           muted
@@ -48,13 +59,14 @@ export function AmbientVideo({
           preload="metadata"
           className="absolute inset-0 h-full w-full object-cover"
           style={{ opacity }}
+          onCanPlay={(e) => (e.currentTarget as HTMLVideoElement).play().catch(() => {})}
         >
           <source src={src} type="video/mp4" />
-        </video>
+        </motion.video>
       )}
-      <div className="absolute inset-0 bg-gradient-to-b from-obsidian-950/55 via-obsidian-950/40 to-obsidian-950" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,transparent_0%,rgba(7,6,10,0.5)_70%,rgba(7,6,10,0.85)_100%)]" />
-      <div className="grain absolute inset-0" />
+      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-obsidian-950 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-obsidian-950 to-transparent" />
+      <div className="grain absolute inset-0 opacity-50" />
     </div>
   );
 }

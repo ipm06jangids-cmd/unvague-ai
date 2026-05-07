@@ -10,7 +10,7 @@ const SHARE_TEXT =
 export function Footer() {
   return (
     <footer className="relative isolate overflow-hidden px-6 py-20">
-      <AmbientVideo src="/loop-luffy.mp4" opacity={0.5} />
+      <AmbientVideo src="/loop-luffy.mp4" peak={0.7} />
       <div className="mx-auto max-w-4xl">
         <Hairline className="mb-16" />
 

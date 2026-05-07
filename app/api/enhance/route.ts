@@ -1,76 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropic, HAIKU_MODEL } from "@/lib/anthropic";
+import { ENHANCE_SCHEMA, FLASH_MODEL, getGemini } from "@/lib/gemini";
 import {
-  buildMetaPrompt,
   EnhanceRequest,
   EnhanceResponse,
-  TargetModel,
-  TaskType,
-  Tone,
+  buildSystemPrompt,
+  buildUserPrompt,
 } from "@/lib/meta-prompt";
+import { rateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
-const VALID_TARGETS: TargetModel[] = ["any", "claude", "gpt", "gemini"];
-const VALID_TASKS: TaskType[] = [
-  "auto",
-  "writing",
-  "coding",
-  "analysis",
-  "marketing",
-  "image",
-  "research",
-];
-const VALID_TONES: Tone[] = ["neutral", "formal", "casual", "technical"];
-
-function extractJson(text: string): unknown {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const candidate = fenced ? fenced[1] : text;
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("no JSON object found");
-  return JSON.parse(candidate.slice(start, end + 1));
+function getClientIp(req: NextRequest): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  const real = req.headers.get("x-real-ip");
+  if (real) return real;
+  return "anon";
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as Partial<EnhanceRequest>;
     const prompt = String(body.prompt ?? "").trim();
     if (!prompt) return NextResponse.json({ error: "prompt required" }, { status: 400 });
     if (prompt.length > 4000)
       return NextResponse.json({ error: "prompt too long (max 4000)" }, { status: 400 });
 
-    const target = (VALID_TARGETS.includes(body.target) ? body.target : "any") as TargetModel;
-    const taskType = (VALID_TASKS.includes(body.taskType) ? body.taskType : "auto") as TaskType;
-    const tone = (VALID_TONES.includes(body.tone) ? body.tone : "neutral") as Tone;
-
-    const enhanceReq: EnhanceRequest = { prompt, target, taskType, tone };
-    const { system, user } = buildMetaPrompt(enhanceReq);
-
-    const anthropic = getAnthropic();
-    const result = await anthropic.messages.create({
-      model: HAIKU_MODEL,
-      max_tokens: 2000,
-      system: [
+    const ip = getClientIp(req);
+    const limit = await rateLimit(`enhance:${ip}`, 10);
+    if (!limit.success) {
+      return NextResponse.json(
         {
-          type: "text",
-          text: system,
-          cache_control: { type: "ephemeral" },
+          error: "rate limit reached. sign in for higher limits, or come back later.",
+          resetAt: limit.reset,
         },
-      ],
-      messages: [{ role: "user", content: user }],
+        { status: 429 },
+      );
+    }
+
+    const enhanceReq: EnhanceRequest = {
+      prompt,
+      mode: (body.mode ?? "text") as EnhanceRequest["mode"],
+      target: (body.target ?? "any") as EnhanceRequest["target"],
+      taskType: body.taskType,
+      tone: body.tone,
+      aspect: body.aspect,
+      style: body.style,
+      duration: body.duration,
+      camera: body.camera,
+      audio: body.audio,
+    };
+
+    const system = buildSystemPrompt(enhanceReq);
+    const user = buildUserPrompt(enhanceReq);
+
+    const gemini = getGemini();
+    const model = gemini.getGenerativeModel({
+      model: FLASH_MODEL,
+      systemInstruction: system,
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: ENHANCE_SCHEMA,
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      },
     });
 
-    const textBlock = result.content.find((c) => c.type === "text");
-    if (!textBlock || textBlock.type !== "text")
-      return NextResponse.json({ error: "no text in response" }, { status: 502 });
-
+    const result = await model.generateContent(user);
+    const text = result.response.text();
     let parsed: EnhanceResponse;
     try {
-      parsed = extractJson(textBlock.text) as EnhanceResponse;
+      parsed = JSON.parse(text) as EnhanceResponse;
     } catch {
       return NextResponse.json(
-        { error: "model returned malformed JSON", raw: textBlock.text },
+        { error: "model returned malformed JSON", raw: text },
         { status: 502 },
       );
     }
